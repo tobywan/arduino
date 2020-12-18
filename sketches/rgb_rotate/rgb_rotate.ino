@@ -11,9 +11,9 @@ struct RGB {
 };
 
 struct HSL {
-  double hue; // degrees [0 to 360) inc
-  double sat; // from [0 to 1] inc
-  double lum; // from [0 to 1] inc
+  float hue; // degrees [0 to 360) inc
+  float sat; // from [0 to 1] inc
+  float lum; // from [0 to 1] inc
 };
 
 
@@ -28,7 +28,7 @@ void setup()
 
 void loop()
 {
-  cycleHue(100);
+  cycleHue(1,0.03);
 }
 
 
@@ -36,7 +36,7 @@ void loop()
 void setColor(byte red, byte green, byte blue)
 {
   analogWrite(RED, red);
-  analogWrite(GREEN, green);
+  analogWrite(GREEN, green * 0.7);  //scale green back a bit
   analogWrite(BLUE, blue);
 }
 
@@ -51,21 +51,32 @@ void debugHue( int hue, RGB& rgb) {
   Serial.println(buf);
 }
 
-void cycleHue(unsigned long dwMs)
+void debugVar(char const *name, float val) {
+  int num = val;
+  int d1 = int(val * 10) % 10;
+  int d2 = int(val * 100) % 100;
+
+  char buf[80];
+  sprintf(buf, "VAR: %s %d.%d%d", name, num, d1, d2);
+  Serial.println(buf);
+
+}
+
+void cycleHue(unsigned int us, float step)
 {
   RGB rgb;
   HSL hsl;
   
   hsl.lum = 0.5;
   hsl.sat = 1.0;
-  for (double hue = 0; hue < 360; hue += 1) {
+  for (float hue = 0; hue < 360; hue += step) {
     hsl.hue = hue;
     rgb = hsl2rgb(hsl);
     setColor(rgb);
 
-    debugHue(hue, rgb);
+    // debugHue(hue, rgb);
 
-    delay(dwMs);
+    delayMicroseconds(us);
 
   }
 }
@@ -107,13 +118,39 @@ RGB hsl2rgb(HSL& hsl)
     return ret;
   }
 
-  double c = (1 - abs(2.0 * hsl.lum - 1)) * hsl.sat;
-  double x = c * ( 1.0 - abs((h / 60) % 2 - 1.0));
-  double m = hsl.lum - c / 2.0;
-  
-  double r;
-  double g;
-  double b;
+  float l = 2.0 * hsl.lum - 1.0;
+  if (l < 0) {
+    l = -l;
+  }
+
+  // hard to do modulo arithmatic on floating points
+  float h1 = (h / 60.0);
+  int h2 = int(h1);
+  float frac = h1 - float(h2);
+  float h4 = float(h2 % 2) + frac - 1.0;
+
+  if (h4 < 0) {
+    h4 = -h4;
+  }
+
+  float c = (1.0 - l) * hsl.sat;
+  float x = c * ( 1.0 - h4);
+  float m = hsl.lum - c / 2.0;
+
+  // debugVar("hue",hsl.hue);
+  // debugVar("h1",h1);
+  // debugVar("h2",h2);
+  // debugVar("frac",frac);
+  // debugVar("h4",h4);
+  // debugVar("l",l);
+  // debugVar("c",c);
+  // debugVar("x",x);
+  // debugVar("m",m);
+
+
+  float r;
+  float g;
+  float b;
 
   if (h < 60) {
     r = c;
